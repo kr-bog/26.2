@@ -1,102 +1,125 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <accctrl.h>
 #include "list.h"
 
-#define MAX_LISTS 10 //максимальное количество списков
+// Создание нового пустого списка
+List* create_list() {
+    return (List*)calloc(1, sizeof(List));
+}
 
-int main() {
-    SetConsoleCP(1251);
-    SetConsoleOutputCP(1251);
+// Вставка нового элемента после текущего
+void insert_after_current(List* list, int value) {
+    Node* new_node = (Node*)malloc(sizeof(Node)); // создаем новый узед
+    new_node->data = value;                       //заполняем данные
 
-    List* lists[MAX_LISTS] = {NULL};
-    int active = -1;
-    int id = 0;
-
-    while (1) {
-        printf("\n--- Меню ---\n");
-        printf("1. Создать новый список\n");
-        printf("2. Скопировать активный список\n");
-        printf("3. Выбрать активный список\n");
-        printf("4. Вставить после текущего\n");
-        printf("5. Вставить перед текущим\n");
-        printf("6. Удалить текущий элемент\n");
-        printf("7. Следующий элемент\n");
-        printf("8. Предыдущий элемент\n");
-        printf("9. Печать активного списка\n");
-        printf("10. Печать всех списков\n");
-        printf("0. Выход\n");
-
-        int choice;
-        scanf("%d", &choice);
-
-        switch (choice) {
-            case 1:                             //создание нового списка
-                if (id < MAX_LISTS) {
-                    lists[id] = create_list();  // Создаем пустой список
-                    active = id;                // Делаем его активным
-                    printf("Создан список #%d\n", id++);
-                }
-                break;
-            case 2:                             //коптирование списка
-                if (active >= 0 && id < MAX_LISTS) {
-                    lists[id] = copy_list(lists[active]);   // создаем копию
-                    printf("Создана копия списка #%d как список #%d\n", active, id);
-                    active = id++;
-                }
-                break;
-            case 3:                             //выбор списка
-                printf("Введите номер списка: ");
-                int select;
-                scanf("%d", &select);
-                if (select >= 0 && select < id && lists[select]) {
-                    active = select;
-                }
-                break;
-            case 4:                             // Вставка после текущего элемента
-                if (active >= 0) {
-                    printf("Введите значение: ");
-                    int v;
-                    scanf("%d", &v);
-                    insert_after_current(lists[active], v);
-                }
-                break;
-            case 5:                             //вставка перед текущим элементом
-                if (active >= 0) {
-                    printf("Введите значение: ");
-                    int v;
-                    scanf("%d", &v);
-                    insert_before_current(lists[active], v);
-                }
-                break;
-            case 6:                             // Удаление текущего элемента
-                if (active >= 0) delete_current(lists[active]);
-                break;
-            case 7:                             // Переход к следующему элементу
-                if (active >= 0) move_next(lists[active]);
-                break;
-            case 8:                             // Переход к предыдущему элементу
-                if (active >= 0) move_prev(lists[active]);
-                break;
-            case 9:                             // Печать активного списка
-                if (active >= 0) {
-                    printf("Список #%d: ", active);
-                    print_list(lists[active]);
-                }
-                break;
-            case 10:                          // Печать всех списков
-                for (int i = 0; i < id; i++) {
-                    if (lists[i]) {
-                        printf("Список #%d: ", i);
-                        print_list(lists[i]);
-                    }
-                }
-                break;
-            case 0:                          // Выход из программы
-                for (int i = 0; i < id; i++) {
-                    if (lists[i]) free_list(lists[i]);
-                }
-                return 0;
-        }
+    //если список пуст
+    if (!list->current) {
+        new_node->next = new_node->prev = new_node; // делаем узел сам на себя
+        list->current = new_node;
+        return;
     }
+    // Если список не пуст
+    Node* curr = list->current; //текущий узел
+    Node* next = curr->next;   //следующий
+
+    //Обновляем узлы
+    curr->next = new_node;  //текущий указывает на новый
+    new_node->prev = curr;  //новый на текущий
+    new_node->next = next;  //новый на следующий
+    next->prev = new_node;  //следующий на новый
+}
+
+//вствка перед текущим
+void insert_before_current(List* list, int value) {
+    move_prev(list);                    //Предыдущий становится текущим
+    insert_after_current(list, value);  //вставляем после нового текщего
+}
+
+//удаление текущего элемента
+void delete_current(List* list) {
+    if (!list->current) return;
+
+    Node* to_delete = list->current;    //узел для удаления
+
+    //если это единственный элемент в списке
+    if (to_delete->next == to_delete) {
+        free(to_delete);        //освобождаем память
+        list->current = NULL;   //список пуст
+        return;
+    }
+
+    //если несколько элементов
+    Node* prev = to_delete->prev;   //предыдущий узел
+    Node* next = to_delete->next;   //следующий узел
+
+    prev->next = next;  //предыдущий указывает на сл
+    next->prev = prev;
+
+    list->current = next;   //следующий узел - текущий
+    free(to_delete);
+}
+
+//переход к следующему элементу
+void move_next(List* list) {
+    if (list->current) list->current = list->current->next;
+}
+
+//переход к предыдущему
+void move_prev(List* list) {
+    if (list->current) list->current = list->current->prev;
+}
+
+//список
+void print_list(List* list) {
+    if (!list->current) {
+        printf("[пусто]\n");
+        return;
+    }
+
+    Node* start = list->current;
+    Node* node = start;
+
+    do {
+        printf(node == list->current ? "[%d] " : "%d ", node->data);
+        node = node->next;
+    } while (node != start);
+
+    printf("\n");
+}
+
+//копировать список
+List* copy_list(List* original) {
+    if (!original || !original->current) return create_list();
+
+    List* copy = create_list();
+    Node* start = original->current;
+    Node* node = start;
+
+    do {
+        insert_after_current(copy, node->data);
+        move_next(copy);
+        node = node->next;
+    } while (node != start);
+
+    return copy;
+}
+
+//освобождаем список
+void free_list(List* list) {
+    if (!list || !list->current) {
+        free(list);
+        return;
+    }
+
+    Node* start = list->current;
+    Node* node = start->next;
+
+    while (node != start) {
+        Node* tmp = node;
+        node = node->next;
+        free(tmp);
+    }
+
+    free(start);
+    free(list);
 }
