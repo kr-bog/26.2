@@ -95,11 +95,26 @@ List* copy_list(List* original) {
     Node* start = original->current;
     Node* node = start;
 
+    int index = 0;
+    int curr_index = 0;
+    Node* temp = original->current;
+
+    while (temp->prev != original->current) {
+        curr_index++;
+        temp = temp->prev;
+    }
+
+    // Копируем элементы
     do {
         insert_after_current(copy, node->data);
         move_next(copy);
         node = node->next;
+        index++;
     } while (node != start);
+
+    for (int i = 0; i < index - curr_index; i++) {
+        move_prev(copy);
+    }
 
     return copy;
 }
